@@ -24,6 +24,7 @@
 module Yesod.Auth.Email
     ( -- * Plugin
       authEmail
+    , authEmailWithForm
     , YesodAuthEmail (..)
     , EmailCreds (..)
     , saltPass
@@ -259,8 +260,23 @@ class ( YesodAuth site
     setPasswordHandler = defaultSetPasswordHandler
 
 authEmail :: (YesodAuthEmail m) => AuthPlugin m
-authEmail =
-    AuthPlugin "email" dispatch emailLoginHandler
+authEmail = authEmailWithForm emailLoginHandler
+
+-- | Allows custom design of the email form. It'll get passed a dispatch
+-- function that knows the following methods:
+--
+-- * register GET/POST
+-- * forgot-password GET/POST
+-- * verify GET
+-- * login POST
+-- * set-password GET/POST
+--
+-- default implementation is in 'emailLoginHandler'
+
+authEmailWithForm :: (YesodAuthEmail m)
+                     => ((Route Auth -> Route m) -> WidgetT m IO ())
+                     -> AuthPlugin m
+authEmailWithForm = AuthPlugin "email" dispatch
   where
     dispatch "GET" ["register"] = getRegisterR >>= sendResponse
     dispatch "POST" ["register"] = postRegisterR >>= sendResponse
@@ -333,6 +349,7 @@ emailLoginHandler toParent = do
         langs <- languages
         master <- getYesod
         return $ renderAuthMessage master langs msg
+
 -- | Default implementation of 'registerHandler'.
 --
 -- Since: 1.2.6
